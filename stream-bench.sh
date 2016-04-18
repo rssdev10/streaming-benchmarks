@@ -11,7 +11,7 @@ MVN=${MVN:-mvn}
 GIT=${GIT:-git}
 MAKE=${MAKE:-make}
 
-KAFKA_VERSION=${KAFKA_VERSION:-"0.8.2.1"}
+KAFKA_VERSION=${KAFKA_VERSION:-"0.9.0.1"}
 REDIS_VERSION=${REDIS_VERSION:-"3.0.5"}
 SCALA_BIN_VERSION=${SCALA_BIN_VERSION:-"2.10"}
 SCALA_SUB_VERSION=${SCALA_SUB_VERSION:-"4"}
@@ -254,6 +254,14 @@ run() {
       "$FLINK_DIR/bin/flink" cancel $FLINK_ID
       sleep 3
     fi
+  elif [ "START_KAFKA_PROCESSING" = "$OPERATION" ];
+  then
+    java -jar ./kafka-benchmarks/target/kafka-benchmarks-0.1.0.jar -conf $CONF_FILE &
+    KAFKA_PROCESSING_PID=$!
+    wait $KAFKA_PROCESSING_PID
+  elif [ "STOP_KAFKA_PROCESSING" = "$OPERATION" ];
+  then
+    kill $KAFKA_PROCESSING_PID
   elif [ "STORM_TEST" = "$OPERATION" ];
   then
     run "START_ZK"
@@ -296,6 +304,19 @@ run() {
     run "STOP_LOAD"
     run "STOP_SPARK_PROCESSING"
     run "STOP_SPARK"
+    run "STOP_KAFKA"
+    run "STOP_REDIS"
+    run "STOP_ZK"
+  elif [ "KAFKA_TEST" = "$OPERATION" ];
+  then
+    run "START_ZK"
+    run "START_REDIS"
+    run "START_KAFKA"
+    run "START_KAFKA_PROCESSING"
+    run "START_LOAD"
+    sleep $TEST_TIME
+    run "STOP_LOAD"
+    run "STOP_KAFKA_PROCESSING"
     run "STOP_KAFKA"
     run "STOP_REDIS"
     run "STOP_ZK"
