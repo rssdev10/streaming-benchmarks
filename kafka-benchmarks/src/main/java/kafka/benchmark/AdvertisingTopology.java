@@ -39,7 +39,6 @@ import org.apache.kafka.streams.kstream.Windowed;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
-import org.apache.kafka.streams.state.Stores;
 
 /**
  * To Run:  run target/kafka-benchmarks-0.1.0-AdvertisingTopology.jar  -conf "../conf/benchmarkConf.yaml"
@@ -50,7 +49,6 @@ public class AdvertisingTopology {
     final static private Serde<String> strSerde = new Serdes.StringSerde();
     final static private StringArraySerializer arrSerde = StringArraySerializer.getInstance();
 
-    @SuppressWarnings({ "unchecked" })
     public static void main(final String[] args) throws Exception {
         Options opts = new Options();
         opts.addOption("conf", true, "Path to the config file.");
@@ -60,7 +58,7 @@ public class AdvertisingTopology {
         String configPath = cmd.getOptionValue("conf");
         Map<?, ?> conf = Utils.findAndReadConfigFile(configPath, true);
 
-        Map<?,?> benchmarkParams = getKafkaConfs(conf);
+        Map<String,?> benchmarkParams = getKafkaConfs(conf);
 
         LOG.info("conf: {}", conf);
         LOG.info("Parameters used: {}", benchmarkParams);
@@ -116,7 +114,7 @@ public class AdvertisingTopology {
                 })
 
                 // perform join with redis data
-                .transformValues(new RedisJoinBolt())
+                .transformValues(new RedisJoinBolt(benchmarkParams))
                 .filter( (key, value) -> value != null)
 
                 // create key from value
@@ -149,13 +147,18 @@ public class AdvertisingTopology {
                         strSerde,
                         arrSerde
                  ).toStream()
-                .process(new CampaignProcessor());
+                .process(new CampaignProcessor(benchmarkParams));
 
         KafkaStreams streams = new KafkaStreams(builder, props);
         streams.start();
     }
 
     public static final class RedisJoinBolt implements ValueTransformerSupplier<String[], String[]> {
+        private final Map<String, ?> benchmarkParams;
+        public RedisJoinBolt(Map<String, ?> benchmarkParams) {
+            this.benchmarkParams = benchmarkParams;
+        }
+
         public ValueTransformer<String[], String[]> get() {
             return new ValueTransformer<String[], String[]>() {
 
@@ -163,16 +166,12 @@ public class AdvertisingTopology {
 
                 @Override
                 public void init(ProcessorContext context) {
+                    // initialize jedis
+                    String jedisServer = (String) benchmarkParams.get("jedis_server");
+                    LOG.info("Opening connection with Jedis to {}", jedisServer);
 
-//                    // initialize jedis
-//                    ParameterTool parameterTool = (ParameterTool) getRuntimeContext().getExecutionConfig()
-//                            .getGlobalJobParameters();
-//                    parameterTool.getRequired("jedis_server");
-//                    LOG.info("Opening connection with Jedis to {}", parameterTool.getRequired("jedis_server"));
-//
-//                    this.redisAdCampaignCache = new RedisAdCampaignCache(parameterTool.getRequired("jedis_server"));
+                    this.redisAdCampaignCache = new RedisAdCampaignCache(jedisServer);
 
-                    this.redisAdCampaignCache = new RedisAdCampaignCache("localhost");
                     this.redisAdCampaignCache.prepare();
                 }
 
@@ -198,6 +197,11 @@ public class AdvertisingTopology {
 
     public static class CampaignProcessor implements ProcessorSupplier<Windowed<String>, List<String[]>> 
     {
+        private final Map<String, ?> benchmarkParams;
+        public CampaignProcessor(Map<String, ?> benchmarkParams) {
+            this.benchmarkParams = benchmarkParams;
+        }
+
         @Override
         public Processor<Windowed<String>, List<String[]>> get() {
             return new Processor<Windowed<String>, List<String[]>>() {
@@ -205,12 +209,11 @@ public class AdvertisingTopology {
 
                 @Override
                 public void init(ProcessorContext context) {
-//                    ParameterTool parameterTool = (ParameterTool) getRuntimeContext().getExecutionConfig().getGlobalJobParameters();
-//                    parameterTool.getRequired("jedis_server");
-//                    LOG.info("Opening connection with Jedis to {}", parameterTool.getRequired("jedis_server"));
+                    // initialize jedis
+                    String jedisServer = (String) benchmarkParams.get("jedis_server");
+                    LOG.info("Opening connection with Jedis to {}", jedisServer);
 
-//                    this.campaignProcessorCommon = new CampaignProcessorCommon(parameterTool.getRequired("jedis_server"));
-                    this.campaignProcessorCommon = new CampaignProcessorCommon("localhost");
+                    this.campaignProcessorCommon = new CampaignProcessorCommon(jedisServer);
                     this.campaignProcessorCommon.prepare();
                 }
 
