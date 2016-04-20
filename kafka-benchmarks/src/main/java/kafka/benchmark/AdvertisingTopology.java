@@ -187,7 +187,9 @@ public class AdvertisingTopology {
                 }
 
                 @Override
-                public void punctuate(long timestamp) {}
+                public String[] punctuate(long timestamp) {
+                    return null;
+                }
 
                 @Override
                 public void close() {}
