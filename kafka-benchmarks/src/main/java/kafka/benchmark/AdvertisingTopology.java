@@ -103,14 +103,14 @@ public class AdvertisingTopology {
                 .filter(new Predicate<String, String[]>() {
                     @Override
                     public boolean test(String key, String[] value) {
-                        return value[4].equals("view");
+                        return value[4].equals("view"); // "event_type"
                     }
                 })
 
                 // project the event
                 .mapValues(input -> {
                     String[] arr = (String[]) input;
-                    return new String[] { arr[2], arr[5] };
+                    return new String[] { arr[2], arr[5] }; // "ad_id" and "event_time"
                 })
 
                 // perform join with redis data
@@ -181,7 +181,7 @@ public class AdvertisingTopology {
                     String ad_id = input[0];
                     String campaign_id = this.redisAdCampaignCache.execute(ad_id);
                     if (campaign_id != null) {
-                        tuple = new String[] { campaign_id, (String) input[0], (String) input[1] };
+                        tuple = new String[] { campaign_id, input[0], input[1] };
                     }
                     return tuple;
                 }
