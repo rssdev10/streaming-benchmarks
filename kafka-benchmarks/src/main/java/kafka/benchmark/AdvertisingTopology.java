@@ -32,6 +32,7 @@ import org.apache.kafka.streams.kstream.Initializer;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KStreamBuilder;
 import org.apache.kafka.streams.kstream.Predicate;
+import org.apache.kafka.streams.kstream.TumblingWindows;
 import org.apache.kafka.streams.kstream.UnlimitedWindows;
 import org.apache.kafka.streams.kstream.ValueTransformer;
 import org.apache.kafka.streams.kstream.ValueTransformerSupplier;
@@ -45,6 +46,7 @@ import org.apache.kafka.streams.processor.ProcessorSupplier;
  */
 public class AdvertisingTopology {
 
+    private static final int WINDOW_SIZE = 10000;
     private static final Logger LOG = LoggerFactory.getLogger(AdvertisingTopology.class);
     final static private Serde<String> strSerde = new Serdes.StringSerde();
     final static private StringArraySerializer arrSerde = StringArraySerializer.getInstance();
@@ -142,8 +144,9 @@ public class AdvertisingTopology {
                                 return aggregate;
                             }
                         },
-                        UnlimitedWindows.of("kafka-test-unlim"),
+                        // UnlimitedWindows.of("kafka-test-unlim"),
                         // HoppingWindows.of("kafka-test-hopping").with(12L).every(5L),
+                        TumblingWindows.of("kafka-test-tumbling").with(WINDOW_SIZE),
                         strSerde,
                         arrSerde
                  ).toStream()
